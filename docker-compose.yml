@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15
+    container_name: platform-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - platform-network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: platform-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - platform-network
+
+  # 认证中心
+  auth-center:
+    build:
+      context: ./auth-center
+      dockerfile: Dockerfile
+    container_name: auth-center
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=platform_auth
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - platform-network
+
+  # 授权中心
+  authz-center:
+    build:
+      context: ./authorization-center
+      dockerfile: Dockerfile
+    container_name: authz-center
+    ports:
+      - "6000:6000"
+    environment:
+      - NODE_ENV=production
+      - PORT=6000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=platform_authz
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - AUTH_SERVICE_URL=http://auth-center:4000
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - postgres
+      - auth-center
+    networks:
+      - platform-network
+
+  # 组件注册中心
+  component-registry:
+    build:
+      context: ./component-registry
+      dockerfile: Dockerfile
+    container_name: component-registry
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=platform_registry
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - postgres
+    networks:
+      - platform-network
+
+  # 平台主应用
+  platform-portal:
+    build:
+      context: ./platform-portal
+      dockerfile: Dockerfile
+    container_name: platform-portal
+    ports:
+      - "3000:80"
+    depends_on:
+      - auth-center
+      - component-registry
+      - authz-center
+    networks:
+      - platform-network
+
+volumes:
+  postgres_data:
+
+networks:
+  platform-network:
+    driver: bridge

@@ -1,0 +1,16 @@
+{
+  "id": "example-component",
+  "name": "示例组件",
+  "version": "1.0.0",
+  "displayName": "示例管理组件",
+  "description": "这是一个示例组件，展示如何开发带有前后端的组件",
+  "entry": "http://localhost:3001/index.js",
+  "container": "#subapp-container",
+  "activeRule": "/example",
+  "backendUrl": "http://localhost:3002",
+  "icon": "",
+  "category": "demo",
+  "permissions": ["user.read"],
+  "enabled": true,
+  "dependencies": []
+}
